@@ -10,6 +10,12 @@ sample
 /pr octocat Hello-World 10
 ```
 
+Running Server
+
+```
+go run cmd/api/main.go [User Token]
+```
+
 ## Changelog
 === initial commit
 - baru bisa print array aja di slack

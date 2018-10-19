@@ -91,14 +91,13 @@ func (s *service) command(w http.ResponseWriter, r *http.Request) {
 	attachments := make([]Attachment, 0)
 	for _, a := range repoInfo.PullRequest.Nodes {
 		attachments = append(attachments, Attachment{
-			Text: fmt.Sprintf("*%s* - %s", a.Author.Login, a.Title),
+			Text: fmt.Sprintf("*%s* - %s %s", a.Author.Login, a.Title, a.Url),
 		})
 	}
 	result := Response{
 		Text:        "*Repo Name* : " + repoInfo.Name,
 		Attachments: attachments,
 	}
-	log.Infof("res %+v", result)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
@@ -116,6 +115,7 @@ func f(token, user, repo string, first int) (*GqlResponse, error) {
 			pullRequests(first:$first) {
 				nodes {
 					title
+					url
 					author {
 						login
 					}
@@ -136,7 +136,6 @@ func f(token, user, repo string, first int) (*GqlResponse, error) {
 	ctx := context.Background()
 
 	if err := client.Run(ctx, req, &respData); err != nil {
-		log.Info("req %+v\n", req)
 		log.Fatal(err)
 		return nil, err
 	}
