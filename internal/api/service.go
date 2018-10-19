@@ -3,9 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/machinebox/graphql"
@@ -35,10 +38,13 @@ type GqlResponse struct {
 		Name        string `json:"name"`
 		PullRequest struct {
 			Nodes []struct {
-				Title string `json:"title"`
-				Url   string `json:"url"`
+				Title  string `json:"title"`
+				Url    string `json:"url"`
+				Author struct {
+					Login string `json:"login"`
+				} `json:"author"`
 			} `json:"nodes"`
-		} `json:"pullRequest"`
+		} `json:"pullRequests"`
 	} `json:"repository"`
 }
 
@@ -67,7 +73,14 @@ func (s *service) command(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get pr list from github api
-	gqlResp, err := f(s.token)
+	params := strings.Split(query["text"][0], " ")
+	if len(params) < 3 {
+		log.Errorf("params less than 3")
+		return
+	}
+
+	limit, _ := strconv.Atoi(params[2])
+	gqlResp, err := f(s.token, params[0], params[1], limit)
 	if err != nil {
 		log.Errorf("error happen %+v", err)
 	}
@@ -78,7 +91,7 @@ func (s *service) command(w http.ResponseWriter, r *http.Request) {
 	attachments := make([]Attachment, 0)
 	for _, a := range repoInfo.PullRequest.Nodes {
 		attachments = append(attachments, Attachment{
-			Text: a.Title,
+			Text: fmt.Sprintf("*%s* - %s", a.Author.Login, a.Title),
 		})
 	}
 	result := Response{
@@ -91,23 +104,31 @@ func (s *service) command(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
-func f(token string) (*GqlResponse, error) {
+func f(token, user, repo string, first int) (*GqlResponse, error) {
 	// create a client (safe to share across requests)
 	client := graphql.NewClient("https://api.github.com/graphql")
 
 	// make a request
 	req := graphql.NewRequest(`
-	query($owner: String!, $name: String!){
+	query($owner: String!, $name: String!, $first: Int!){
 		repository (owner: $owner, name: $name) {
 			name
+			pullRequests(first:$first) {
+				nodes {
+					title
+					author {
+						login
+					}
+				}
+			}
 		}
     }
 `)
 
 	// set any variables
-	req.Var("owner", "octocat")
-	req.Var("name", "Hello-World")
-	req.Var("first", 5)
+	req.Var("owner", user)
+	req.Var("name", repo)
+	req.Var("first", first)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	// run it and capture the response
