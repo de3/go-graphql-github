@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -30,7 +29,12 @@ type Response struct {
 }
 
 type Attachment struct {
-	Text string `json:"text"`
+	AuthorName string `json:"author_name"`
+	AuthorLink string `json:"author_link"`
+	AuthorIcon string `json:"author_icon"`
+	Title      string `json:"title"`
+	TitleLink  string `json:"title_link"`
+	Text       string `json:"text"`
 }
 
 type GqlResponse struct {
@@ -40,8 +44,11 @@ type GqlResponse struct {
 			Nodes []struct {
 				Title  string `json:"title"`
 				Url    string `json:"url"`
+				Body   string `json:"bodyText"`
 				Author struct {
-					Login string `json:"login"`
+					Login  string `json:"login"`
+					Url    string `json:"url"`
+					Avatar string `json:"avatarUrl"`
 				} `json:"author"`
 			} `json:"nodes"`
 		} `json:"pullRequests"`
@@ -89,7 +96,12 @@ func (s *service) command(w http.ResponseWriter, r *http.Request) {
 	attachments := make([]Attachment, 0)
 	for _, a := range repoInfo.PullRequest.Nodes {
 		attachments = append(attachments, Attachment{
-			Text: fmt.Sprintf("*%s* - %s %s", a.Author.Login, a.Title, a.Url),
+			AuthorName: a.Author.Login,
+			AuthorLink: a.Author.Url,
+			AuthorIcon: a.Author.Avatar,
+			Title:      a.Title,
+			TitleLink:  a.Url,
+			Text:       a.Body,
 		})
 	}
 	result := Response{
@@ -114,8 +126,11 @@ func f(token, user, repo string, first int) (*GqlResponse, error) {
 				nodes {
 					title
 					url
+					bodyText
 					author {
 						login
+						url
+						avatarUrl
 					}
 				}
 			}
