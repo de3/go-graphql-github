@@ -85,8 +85,6 @@ func (s *service) command(w http.ResponseWriter, r *http.Request) {
 		log.Errorf("error happen %+v", err)
 	}
 
-	log.Infof("qq %+v", query["text"])
-
 	repoInfo := gqlResp.Repository
 	attachments := make([]Attachment, 0)
 	for _, a := range repoInfo.PullRequest.Nodes {
