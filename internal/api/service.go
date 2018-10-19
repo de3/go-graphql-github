@@ -22,7 +22,12 @@ type service struct {
 }
 
 type Response struct {
-	Text interface{} `json:"text"`
+	Text        string       `json:"text"`
+	Attachments []Attachment `json:"attachments"`
+}
+
+type Attachment struct {
+	Text string `json:"text"`
 }
 
 type GqlResponse struct {
@@ -69,9 +74,18 @@ func (s *service) command(w http.ResponseWriter, r *http.Request) {
 
 	log.Infof("qq %+v", query["text"])
 
-	result := Response{
-		Text: gqlResp,
+	repoInfo := gqlResp.Repository
+	attachments := make([]Attachment, 0)
+	for _, a := range repoInfo.PullRequest.Nodes {
+		attachments = append(attachments, Attachment{
+			Text: a.Title,
+		})
 	}
+	result := Response{
+		Text:        "*Repo Name* : " + repoInfo.Name,
+		Attachments: attachments,
+	}
+	log.Infof("res %+v", result)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
